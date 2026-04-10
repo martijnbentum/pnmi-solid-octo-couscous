@@ -2,7 +2,7 @@ import numpy as np
 
 
 def _as_1d_labels(labels):
-    array = np.asarray(labels)
+    array = np.asarray(labels, dtype = object)
     if array.ndim == 0:
         array = array.reshape(1)
     else:
@@ -10,7 +10,20 @@ def _as_1d_labels(labels):
     return array
 
 
-def _validate_labels(phone_labels, cluster_labels):
+def _is_invalid(value, invalid_label):
+    if invalid_label is None:
+        return False
+    if isinstance(invalid_label, float) and np.isnan(invalid_label):
+        return isinstance(value, float) and np.isnan(value)
+    return value == invalid_label
+
+
+def filter_valid_frames(phone_labels, cluster_labels, invalid_label = None):
+    '''Filter aligned labels and drop invalid frames.
+
+    invalid_label: value to ignore in either label stream. If None, all frames
+    are retained.
+    '''
     phone_labels = _as_1d_labels(phone_labels)
     cluster_labels = _as_1d_labels(cluster_labels)
 
@@ -20,7 +33,21 @@ def _validate_labels(phone_labels, cluster_labels):
         raise ValueError(
             'phone_labels and cluster_labels must have the same length'
         )
-    return phone_labels, cluster_labels
+
+    if invalid_label is None:
+        return phone_labels, cluster_labels
+
+    valid_indices = [
+        index for index, (phone_label, cluster_label) in enumerate(
+            zip(phone_labels.tolist(), cluster_labels.tolist())
+        ) if not _is_invalid(phone_label, invalid_label)
+        and not _is_invalid(cluster_label, invalid_label)
+    ]
+
+    if not valid_indices:
+        raise ValueError('no valid frames remain after filtering')
+
+    return phone_labels[valid_indices], cluster_labels[valid_indices]
 
 
 def _inverse_indices(labels):
@@ -38,7 +65,7 @@ def _inverse_indices(labels):
 
 
 def _count_matrix(phone_labels, cluster_labels):
-    phone_labels, cluster_labels = _validate_labels(
+    phone_labels, cluster_labels = filter_valid_frames(
         phone_labels,
         cluster_labels,
     )
@@ -101,3 +128,48 @@ def cluster_purity(phone_labels, cluster_labels):
     '''Compute average cluster purity within phone labels.'''
     counts = _count_matrix(phone_labels, cluster_labels)
     return float(counts.max(axis = 1).sum() / counts.sum())
+
+
+def evaluate_labels(
+    phone_labels,
+    cluster_labels,
+    invalid_label = None,
+    return_diagnostics = False,
+):
+    '''Compute PNMI metrics for one aligned discrete label stream.'''
+    phone_labels, cluster_labels = filter_valid_frames(
+        phone_labels,
+        cluster_labels,
+        invalid_label = invalid_label,
+    )
+    joint = joint_distribution(phone_labels, cluster_labels)
+    phone_marginal = joint.sum(axis = 1)
+    cluster_marginal = joint.sum(axis = 0)
+    phone_entropy = entropy(phone_marginal)
+    cluster_entropy = entropy(cluster_marginal)
+    information = mutual_information(phone_labels, cluster_labels)
+
+    result = {
+        'valid_frame_count': int(phone_labels.size),
+        'n_phone_labels': int(phone_marginal.size),
+        'n_cluster_labels': int(cluster_marginal.size),
+        'mutual_information': information,
+        'phone_entropy': phone_entropy,
+        'cluster_entropy': cluster_entropy,
+        'pnmi': 0.0 if phone_entropy == 0.0 else information / phone_entropy,
+        'phone_purity': phone_purity(phone_labels, cluster_labels),
+        'cluster_purity': cluster_purity(phone_labels, cluster_labels),
+    }
+
+    if return_diagnostics:
+        result['mi_over_phone_entropy'] = (
+            0.0 if phone_entropy == 0.0 else information / phone_entropy
+        )
+        result['mi_over_cluster_entropy'] = (
+            0.0 if cluster_entropy == 0.0 else information / cluster_entropy
+        )
+        result['joint_distribution'] = joint
+        result['phone_marginal'] = phone_marginal
+        result['cluster_marginal'] = cluster_marginal
+
+    return result
