@@ -44,3 +44,7 @@ print(evaluate_streams(phone_labels = [0, 0, 1, 1, 2, 2, 3, 3],
 
 See [examples/example_usage.py](/Users/martijn.bentum/repos/pnmi/examples/example_usage.py)
 for single-stream, multi-stream, and clustering-based usage.
+
+Dummy PNMI showcase data is also available through
+[examples/dummy_data_analysis.py](/Users/martijn.bentum/repos/pnmi/examples/dummy_data_analysis.py),
+which reports `perfect`, `high`, `medium`, `low`, and `none` conditions.

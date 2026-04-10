@@ -4,17 +4,16 @@ from .metrics import evaluate_labels
 
 
 def _as_object_array(values):
-    array = np.asarray(values, dtype = object)
+    array = np.asarray(values, dtype=object)
     if array.ndim == 0:
         return array.reshape(1)
     return array.reshape(-1)
 
 
-def _normalise_streams(codebooks, stream_axis = 0):
+def _normalise_streams(codebooks, stream_axis=0):
     if isinstance(codebooks, dict):
-        return {
-            key: _as_object_array(value) for key, value in codebooks.items()
-        }
+        return {key: _as_object_array(value) for key, value in
+            codebooks.items()}
 
     if isinstance(codebooks, np.ndarray):
         if codebooks.ndim == 1:
@@ -33,7 +32,7 @@ def _normalise_streams(codebooks, stream_axis = 0):
         if not codebooks:
             raise ValueError('codebooks must not be empty')
 
-        first = np.asarray(codebooks[0], dtype = object)
+        first = np.asarray(codebooks[0], dtype=object)
         if first.ndim == 0:
             return {0: _as_object_array(codebooks)}
 
@@ -45,7 +44,7 @@ def _normalise_streams(codebooks, stream_axis = 0):
     return {0: _as_object_array(codebooks)}
 
 
-def _selected_keys(all_keys, layers = None, start_layer = None, end_layer = None):
+def _selected_keys(all_keys, layers=None, start_layer=None, end_layer=None):
     if layers is not None and (start_layer is not None or end_layer is not None):
         raise ValueError('use layers or a layer range, not both')
 
@@ -68,21 +67,12 @@ def _selected_keys(all_keys, layers = None, start_layer = None, end_layer = None
     return selected
 
 
-def select_codebook_streams(
-    codebooks,
-    layers = None,
-    start_layer = None,
-    end_layer = None,
-    stream_axis = 0,
-):
+def select_codebook_streams(codebooks, layers=None, start_layer=None,
+    end_layer=None, stream_axis=0):
     '''Select one or more codebook streams by key or inclusive layer range.'''
-    streams = _normalise_streams(codebooks, stream_axis = stream_axis)
-    selected = _selected_keys(
-        list(streams.keys()),
-        layers = layers,
-        start_layer = start_layer,
-        end_layer = end_layer,
-    )
+    streams = _normalise_streams(codebooks, stream_axis=stream_axis)
+    selected = _selected_keys(list(streams.keys()), layers=layers,
+        start_layer=start_layer, end_layer=end_layer)
 
     selected_streams = {key: streams[key] for key in selected}
     lengths = {stream.shape[0] for stream in selected_streams.values()}
@@ -91,23 +81,14 @@ def select_codebook_streams(
     return selected_streams
 
 
-def build_joint_labels(
-    codebooks,
-    layers = None,
-    start_layer = None,
-    end_layer = None,
-    stream_axis = 0,
-):
+def build_joint_labels(codebooks, layers=None, start_layer=None,
+    end_layer=None, stream_axis=0):
     '''Combine one or more codebook streams into tuple-valued joint labels.'''
-    streams = select_codebook_streams(
-        codebooks,
-        layers = layers,
-        start_layer = start_layer,
-        end_layer = end_layer,
-        stream_axis = stream_axis,
-    )
+    streams = select_codebook_streams(codebooks, layers=layers,
+        start_layer=start_layer, end_layer=end_layer,
+        stream_axis=stream_axis)
     keys = list(streams.keys())
-    joint_labels = np.empty(next(iter(streams.values())).shape[0], dtype = object)
+    joint_labels = np.empty(next(iter(streams.values())).shape[0], dtype=object)
 
     for index in range(joint_labels.size):
         joint_labels[index] = tuple(streams[key][index] for key in keys)
@@ -116,8 +97,8 @@ def build_joint_labels(
 
 
 def _aggregate_metric(values, weights):
-    values = np.asarray(values, dtype = float)
-    weights = np.asarray(weights, dtype = float)
+    values = np.asarray(values, dtype=float)
+    weights = np.asarray(weights, dtype=float)
     return {
         'mean': float(values.mean()),
         'max': float(values.max()),
@@ -126,18 +107,14 @@ def _aggregate_metric(values, weights):
     }
 
 
-def summarize_stream_metrics(per_stream_results, include_diagnostics = False):
+def summarize_stream_metrics(per_stream_results, include_diagnostics=False):
     '''Summarise metrics across multiple discrete streams.'''
     if not per_stream_results:
         raise ValueError('per_stream_results must not be empty')
 
     weights = np.array(
-        [
-            result['valid_frame_count']
-            for result in per_stream_results.values()
-        ],
-        dtype = float,
-    )
+        [result['valid_frame_count'] for result in per_stream_results.values()],
+        dtype=float)
     summary = {
         'stream_count': len(per_stream_results),
         'valid_frame_count_total': int(weights.sum()),
@@ -173,64 +150,38 @@ def summarize_stream_metrics(per_stream_results, include_diagnostics = False):
     return summary
 
 
-def evaluate_streams(
-    phone_labels,
-    codebooks,
-    mode = 'per_stream',
-    layers = None,
-    start_layer = None,
-    end_layer = None,
-    stream_axis = 0,
-    invalid_label = None,
-    return_diagnostics = False,
-):
+def evaluate_streams(phone_labels, codebooks, mode='per_stream',
+    layers=None, start_layer=None, end_layer=None, stream_axis=0,
+    invalid_label=None, return_diagnostics=False):
     '''Evaluate one or more discrete streams against frame-level phone labels.
 
     mode: `per_stream`, `joint_token`, or `pooled_summary`
     '''
-    streams = select_codebook_streams(
-        codebooks,
-        layers = layers,
-        start_layer = start_layer,
-        end_layer = end_layer,
-        stream_axis = stream_axis,
-    )
+    streams = select_codebook_streams(codebooks, layers=layers,
+        start_layer=start_layer, end_layer=end_layer,
+        stream_axis=stream_axis)
 
     if mode == 'per_stream':
         return {
-            key: evaluate_labels(
-                phone_labels,
-                stream,
-                invalid_label = invalid_label,
-                return_diagnostics = return_diagnostics,
-            ) for key, stream in streams.items()
+            key: evaluate_labels(phone_labels, stream,
+                invalid_label=invalid_label,
+                return_diagnostics=return_diagnostics)
+            for key, stream in streams.items()
         }
 
     if mode == 'joint_token':
-        joint_labels = build_joint_labels(
-            streams,
-            stream_axis = stream_axis,
-        )
-        result = evaluate_labels(
-            phone_labels,
-            joint_labels,
-            invalid_label = invalid_label,
-            return_diagnostics = return_diagnostics,
-        )
+        joint_labels = build_joint_labels(streams, stream_axis=stream_axis)
+        result = evaluate_labels(phone_labels, joint_labels,
+            invalid_label=invalid_label,
+            return_diagnostics=return_diagnostics)
         result['stream_count'] = len(streams)
         return result
 
     if mode == 'pooled_summary':
-        per_stream = evaluate_streams(
-            phone_labels,
-            streams,
-            mode = 'per_stream',
-            invalid_label = invalid_label,
-            return_diagnostics = return_diagnostics,
-        )
-        return summarize_stream_metrics(
-            per_stream,
-            include_diagnostics = return_diagnostics,
-        )
+        per_stream = evaluate_streams(phone_labels, streams,
+            mode='per_stream', invalid_label=invalid_label,
+            return_diagnostics=return_diagnostics)
+        return summarize_stream_metrics(per_stream,
+            include_diagnostics=return_diagnostics)
 
     raise ValueError(f'unknown evaluation mode: {mode}')

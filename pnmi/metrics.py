@@ -2,7 +2,7 @@ import numpy as np
 
 
 def _as_1d_labels(labels):
-    array = np.asarray(labels, dtype = object)
+    array = np.asarray(labels, dtype=object)
     if array.ndim == 0:
         array = array.reshape(1)
     else:
@@ -18,11 +18,11 @@ def _is_invalid(value, invalid_label):
     return value == invalid_label
 
 
-def filter_valid_frames(phone_labels, cluster_labels, invalid_label = None):
+def filter_valid_frames(phone_labels, cluster_labels, invalid_label=None):
     '''Filter aligned labels and drop invalid frames.
 
-    invalid_label: value to ignore in either label stream. If None, all frames
-    are retained.
+    invalid_label: value to ignore in either label stream. If None, all
+    frames are retained.
     '''
     phone_labels = _as_1d_labels(phone_labels)
     cluster_labels = _as_1d_labels(cluster_labels)
@@ -37,12 +37,12 @@ def filter_valid_frames(phone_labels, cluster_labels, invalid_label = None):
     if invalid_label is None:
         return phone_labels, cluster_labels
 
-    valid_indices = [
-        index for index, (phone_label, cluster_label) in enumerate(
-            zip(phone_labels.tolist(), cluster_labels.tolist())
-        ) if not _is_invalid(phone_label, invalid_label)
-        and not _is_invalid(cluster_label, invalid_label)
-    ]
+    valid_indices = []
+    paired_labels = zip(phone_labels.tolist(), cluster_labels.tolist())
+    for index, (phone_label, cluster_label) in enumerate(paired_labels):
+        if _is_invalid(phone_label, invalid_label): continue
+        if _is_invalid(cluster_label, invalid_label): continue
+        valid_indices.append(index)
 
     if not valid_indices:
         raise ValueError('no valid frames remain after filtering')
@@ -52,7 +52,7 @@ def filter_valid_frames(phone_labels, cluster_labels, invalid_label = None):
 
 def _inverse_indices(labels):
     label_to_index = {}
-    inverse = np.empty(labels.size, dtype = int)
+    inverse = np.empty(labels.size, dtype=int)
 
     for index, label in enumerate(labels.tolist()):
         mapped = label_to_index.get(label)
@@ -72,7 +72,7 @@ def _count_matrix(phone_labels, cluster_labels):
     phone_inverse, n_phones = _inverse_indices(phone_labels)
     cluster_inverse, n_clusters = _inverse_indices(cluster_labels)
 
-    counts = np.zeros((n_phones, n_clusters), dtype = float)
+    counts = np.zeros((n_phones, n_clusters), dtype=float)
     np.add.at(counts, (phone_inverse, cluster_inverse), 1.0)
     return counts
 
@@ -86,12 +86,12 @@ def joint_distribution(phone_labels, cluster_labels):
 def marginals(phone_labels, cluster_labels):
     '''Compute p(phone) and p(cluster).'''
     joint = joint_distribution(phone_labels, cluster_labels)
-    return joint.sum(axis = 1), joint.sum(axis = 0)
+    return joint.sum(axis=1), joint.sum(axis=0)
 
 
 def entropy(probabilities):
     '''Compute Shannon entropy from a probability vector or matrix.'''
-    probabilities = np.asarray(probabilities, dtype = float)
+    probabilities = np.asarray(probabilities, dtype=float)
     positive = probabilities[probabilities > 0.0]
     if positive.size == 0:
         return 0.0
@@ -101,8 +101,8 @@ def entropy(probabilities):
 def mutual_information(phone_labels, cluster_labels):
     '''Compute mutual information between phone and cluster labels.'''
     joint = joint_distribution(phone_labels, cluster_labels)
-    phone_marginal = joint.sum(axis = 1, keepdims = True)
-    cluster_marginal = joint.sum(axis = 0, keepdims = True)
+    phone_marginal = joint.sum(axis=1, keepdims=True)
+    cluster_marginal = joint.sum(axis=0, keepdims=True)
     denominator = phone_marginal * cluster_marginal
     mask = joint > 0.0
     values = joint[mask] * np.log(joint[mask] / denominator[mask])
@@ -121,30 +121,25 @@ def pnmi(phone_labels, cluster_labels):
 def phone_purity(phone_labels, cluster_labels):
     '''Compute average phone purity within cluster labels.'''
     counts = _count_matrix(phone_labels, cluster_labels)
-    return float(counts.max(axis = 0).sum() / counts.sum())
+    return float(counts.max(axis=0).sum() / counts.sum())
 
 
 def cluster_purity(phone_labels, cluster_labels):
     '''Compute average cluster purity within phone labels.'''
     counts = _count_matrix(phone_labels, cluster_labels)
-    return float(counts.max(axis = 1).sum() / counts.sum())
+    return float(counts.max(axis=1).sum() / counts.sum())
 
 
-def evaluate_labels(
-    phone_labels,
-    cluster_labels,
-    invalid_label = None,
-    return_diagnostics = False,
-):
+def evaluate_labels(phone_labels, cluster_labels, invalid_label=None,
+    return_diagnostics=False):
     '''Compute PNMI metrics for one aligned discrete label stream.'''
     phone_labels, cluster_labels = filter_valid_frames(
         phone_labels,
         cluster_labels,
-        invalid_label = invalid_label,
-    )
+        invalid_label=invalid_label)
     joint = joint_distribution(phone_labels, cluster_labels)
-    phone_marginal = joint.sum(axis = 1)
-    cluster_marginal = joint.sum(axis = 0)
+    phone_marginal = joint.sum(axis=1)
+    cluster_marginal = joint.sum(axis=0)
     phone_entropy = entropy(phone_marginal)
     cluster_entropy = entropy(cluster_marginal)
     information = mutual_information(phone_labels, cluster_labels)

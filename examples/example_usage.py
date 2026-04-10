@@ -25,8 +25,10 @@ def spidr_style_example():
     }
 
     print('SpidR-style multi-stream')
-    print('per stream:', evaluate_streams(phone_labels, codebooks, 'per_stream'))
-    print('joint token:', evaluate_streams(phone_labels, codebooks, 'joint_token'))
+    print('per stream:', evaluate_streams(phone_labels, codebooks,
+        'per_stream'))
+    print('joint token:', evaluate_streams(phone_labels, codebooks,
+        'joint_token'))
     print(
         'pooled summary:',
         evaluate_streams(phone_labels, codebooks, 'pooled_summary'),
@@ -49,7 +51,7 @@ def clustering_example():
     )
 
     try:
-        cluster_labels = cluster_hidden_states(hidden_states, n_clusters = 3)
+        cluster_labels = cluster_hidden_states(hidden_states, n_clusters=3)
     except ImportError:
         print('Install scikit-learn to run the clustering example.')
         return

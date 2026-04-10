@@ -5,9 +5,11 @@ import numpy as np
 from pnmi import build_joint_labels
 from pnmi import cluster_purity
 from pnmi import entropy
+from pnmi import analyze_all_dummy_datasets
 from pnmi import evaluate_labels
 from pnmi import evaluate_streams
 from pnmi import joint_distribution
+from pnmi import labels_from_count_matrix
 from pnmi import marginals
 from pnmi import mutual_information
 from pnmi import phone_purity
@@ -28,18 +30,15 @@ class PnmiRegressionTests(unittest.TestCase):
                 [0 / 6, 2 / 6, 1 / 6],
                 [0 / 6, 0 / 6, 1 / 6],
             ],
-            dtype = float,
-        )
+            dtype=float)
         np.testing.assert_allclose(joint, expected)
 
     def test_marginals_and_entropy_are_consistent(self):
         phone_labels = [0, 0, 1, 1]
         cluster_labels = [1, 1, 0, 0]
 
-        phone_marginal, cluster_marginal = marginals(
-            phone_labels,
-            cluster_labels,
-        )
+        phone_marginal, cluster_marginal = marginals(phone_labels,
+            cluster_labels)
 
         np.testing.assert_allclose(phone_marginal, [0.5, 0.5])
         np.testing.assert_allclose(cluster_marginal, [0.5, 0.5])
@@ -51,8 +50,7 @@ class PnmiRegressionTests(unittest.TestCase):
 
         self.assertAlmostEqual(
             mutual_information(phone_labels, cluster_labels),
-            entropy(np.array([2 / 6, 2 / 6, 2 / 6], dtype = float)),
-        )
+            entropy(np.array([2 / 6, 2 / 6, 2 / 6], dtype=float)))
         self.assertAlmostEqual(pnmi(phone_labels, cluster_labels), 1.0)
         self.assertAlmostEqual(phone_purity(phone_labels, cluster_labels), 1.0)
         self.assertAlmostEqual(cluster_purity(phone_labels, cluster_labels), 1.0)
@@ -63,8 +61,7 @@ class PnmiRegressionTests(unittest.TestCase):
 
         self.assertAlmostEqual(
             mutual_information(phone_labels, cluster_labels),
-            0.0,
-        )
+            0.0)
         self.assertAlmostEqual(pnmi(phone_labels, cluster_labels), 0.0)
         self.assertAlmostEqual(phone_purity(phone_labels, cluster_labels), 0.5)
         self.assertAlmostEqual(cluster_purity(phone_labels, cluster_labels), 0.5)
@@ -75,8 +72,7 @@ class PnmiRegressionTests(unittest.TestCase):
 
         self.assertAlmostEqual(
             entropy(marginals(phone_labels, cluster_labels)[0]),
-            0.0,
-        )
+            0.0)
         self.assertAlmostEqual(pnmi(phone_labels, cluster_labels), 0.0)
         self.assertAlmostEqual(phone_purity(phone_labels, cluster_labels), 1.0)
         self.assertAlmostEqual(cluster_purity(phone_labels, cluster_labels), 2 / 3)
@@ -106,11 +102,8 @@ class SpidrRegressionTests(unittest.TestCase):
             7: [2, 2, 3, 3],
         }
 
-        selected = select_codebook_streams(
-            codebooks,
-            start_layer = 6,
-            end_layer = 7,
-        )
+        selected = select_codebook_streams(codebooks, start_layer=6,
+            end_layer=7)
 
         self.assertEqual(list(selected.keys()), [6, 7])
 
@@ -131,11 +124,8 @@ class SpidrRegressionTests(unittest.TestCase):
             6: [0, 0, 1, 1, 0, 0, 1, 1],
         }
 
-        results = evaluate_streams(
-            phone_labels,
-            codebooks,
-            mode = 'per_stream',
-        )
+        results = evaluate_streams(phone_labels, codebooks,
+            mode='per_stream')
 
         self.assertEqual(set(results.keys()), {5, 6})
         self.assertLess(results[5]['pnmi'], 1.0)
@@ -148,16 +138,10 @@ class SpidrRegressionTests(unittest.TestCase):
             6: [0, 0, 1, 1, 0, 0, 1, 1],
         }
 
-        per_stream = evaluate_streams(
-            phone_labels,
-            codebooks,
-            mode = 'per_stream',
-        )
-        joint = evaluate_streams(
-            phone_labels,
-            codebooks,
-            mode = 'joint_token',
-        )
+        per_stream = evaluate_streams(phone_labels, codebooks,
+            mode='per_stream')
+        joint = evaluate_streams(phone_labels, codebooks,
+            mode='joint_token')
 
         self.assertLess(per_stream[5]['pnmi'], 1.0)
         self.assertLess(per_stream[6]['pnmi'], 1.0)
@@ -170,18 +154,33 @@ class SpidrRegressionTests(unittest.TestCase):
             1: [0, 1, 0, 1, -1, -1],
         }
 
-        summary = evaluate_streams(
-            phone_labels,
-            codebooks,
-            mode = 'pooled_summary',
-            invalid_label = -1,
-            return_diagnostics = True,
-        )
+        summary = evaluate_streams(phone_labels, codebooks,
+            mode='pooled_summary', invalid_label=-1,
+            return_diagnostics=True)
 
         self.assertAlmostEqual(summary['pnmi']['mean'], 0.5)
         self.assertAlmostEqual(summary['pnmi']['weighted_mean'], 0.6)
         self.assertEqual(summary['valid_frame_count_total'], 10)
         self.assertIn('mutual_information', summary)
+
+
+class DummyDataRegressionTests(unittest.TestCase):
+    def test_labels_from_count_matrix_builds_expected_lengths(self):
+        phone_labels, cluster_labels = labels_from_count_matrix(
+            [[2, 1], [0, 3]])
+
+        self.assertEqual(phone_labels.tolist(), [0, 0, 0, 1, 1, 1])
+        self.assertEqual(cluster_labels.tolist(), [0, 0, 1, 1, 1, 1])
+
+    def test_dummy_datasets_have_expected_ordering(self):
+        results = analyze_all_dummy_datasets()
+        pnmis = {name: result['pnmi'] for name, result in results.items()}
+
+        self.assertAlmostEqual(pnmis['perfect'], 1.0)
+        self.assertGreater(pnmis['high'], pnmis['medium'])
+        self.assertGreater(pnmis['medium'], pnmis['low'])
+        self.assertGreater(pnmis['low'], pnmis['none'])
+        self.assertAlmostEqual(pnmis['none'], 0.0)
 
 
 if __name__ == '__main__':
