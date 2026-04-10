@@ -21,6 +21,16 @@ References:
 pip install git+https://git@github.com/martijnbentum/pnmi-solid-octo-couscous.git
 ```
 
+For local development:
+
+```bash
+./scripts/install_local.sh
+```
+
+This keeps local setuptools metadata and build artifacts under `.build/`,
+including moving any root-level `pnmi.egg-info` created by editable install
+back into `.build/`.
+
 ## Core API
 
 - `evaluate_labels(phone_labels, cluster_labels)` for one frame-level stream
