@@ -3,23 +3,56 @@ import numpy as np
 from .metrics import evaluate_labels
 
 
-def _as_label_arrays(phone_labels, cluster_labels):
-    phone_labels = np.asarray(phone_labels, dtype=object)
-    cluster_labels = np.asarray(cluster_labels, dtype=object)
-    if phone_labels.ndim != 1:
-        raise ValueError('phone_labels must be a 1D sequence')
-    if cluster_labels.ndim != 1:
-        raise ValueError('cluster_labels must be a 1D sequence')
-    if phone_labels.size == 0 or cluster_labels.size == 0:
-        raise ValueError('phone_labels and cluster_labels must not be empty')
-    if phone_labels.size != cluster_labels.size:
-        raise ValueError(
-            'phone_labels and cluster_labels must have the same length')
-    return phone_labels, cluster_labels
+def analyze_all_dummy_datasets():
+    '''Run PNMI analysis across all dummy showcase datasets.
+
+    returns:  Dictionary keyed by dataset name. Each value is the full result
+              from `analyze_dummy_dataset(...)`, including the source labels.
+    '''
+    return {name: analyze_dummy_dataset(name) for name in dummy_pnmi_datasets()}
+
+
+def analyze_dummy_dataset(name):
+    '''Run PNMI analysis for one named dummy dataset.
+
+    name:     One of `perfect`, `high`, `medium`, `low`, or `none`.
+
+    returns:  Result dictionary from `evaluate_labels(...)` plus the dataset
+              name and the source `phone_labels` and `cluster_labels`.
+    '''
+    datasets = dummy_pnmi_datasets()
+    if name not in datasets:
+        raise ValueError(f'unknown dummy dataset: {name}')
+
+    phone_labels, cluster_labels = datasets[name]
+    result = evaluate_labels(phone_labels, cluster_labels,
+        return_diagnostics=True)
+    result['name'] = name
+    result['phone_labels'] = phone_labels
+    result['cluster_labels'] = cluster_labels
+    return result
+
+
+def dummy_pnmi_datasets():
+    '''Return named dummy datasets ordered by expected PNMI strength.
+
+    returns:  Dictionary containing aligned `(phone_labels, cluster_labels)`
+              pairs for `perfect`, `high`, `medium`, `low`, and `none`.
+    '''
+    return {
+        'perfect': perfect_pnmi_data(),
+        'high': high_pnmi_data(),
+        'medium': medium_pnmi_data(),
+        'low': low_pnmi_data(),
+        'none': no_pnmi_data(),
+    }
 
 
 def perfect_pnmi_data():
-    '''Return labels with a one-to-one phone-to-cluster mapping.'''
+    '''Return labels with a one-to-one phone-to-cluster mapping.
+
+    returns:  Tuple `(phone_labels, cluster_labels)` as 1D NumPy arrays.
+    '''
     phone_labels = (
         ['aa'] * 20 +
         ['bb'] * 20 +
@@ -34,7 +67,10 @@ def perfect_pnmi_data():
 
 
 def high_pnmi_data():
-    '''Return labels with strong but imperfect phone-cluster alignment.'''
+    '''Return labels with strong but imperfect phone-cluster alignment.
+
+    returns:  Tuple `(phone_labels, cluster_labels)` as 1D NumPy arrays.
+    '''
     phone_labels = (
         ['aa'] * 20 +
         ['bb'] * 20 +
@@ -49,7 +85,10 @@ def high_pnmi_data():
 
 
 def medium_pnmi_data():
-    '''Return labels where clusters merge phone pairs deterministically.'''
+    '''Return labels where clusters merge phone pairs deterministically.
+
+    returns:  Tuple `(phone_labels, cluster_labels)` as 1D NumPy arrays.
+    '''
     phone_labels = (
         ['aa'] * 20 +
         ['bb'] * 20 +
@@ -64,7 +103,10 @@ def medium_pnmi_data():
 
 
 def low_pnmi_data():
-    '''Return labels with weak but non-zero phone-cluster correlation.'''
+    '''Return labels with weak but non-zero phone-cluster correlation.
+
+    returns:  Tuple `(phone_labels, cluster_labels)` as 1D NumPy arrays.
+    '''
     phone_labels = (
         ['aa'] * 20 +
         ['bb'] * 20 +
@@ -79,7 +121,10 @@ def low_pnmi_data():
 
 
 def no_pnmi_data():
-    '''Return labels with identical cluster distribution for every phone.'''
+    '''Return labels with identical cluster distribution for every phone.
+
+    returns:  Tuple `(phone_labels, cluster_labels)` as 1D NumPy arrays.
+    '''
     phone_labels = (
         ['aa'] * 20 +
         ['bb'] * 20 +
@@ -89,32 +134,16 @@ def no_pnmi_data():
     return _as_label_arrays(phone_labels, cluster_labels)
 
 
-def dummy_pnmi_datasets():
-    '''Return named dummy datasets ordered by expected PNMI strength.'''
-    return {
-        'perfect': perfect_pnmi_data(),
-        'high': high_pnmi_data(),
-        'medium': medium_pnmi_data(),
-        'low': low_pnmi_data(),
-        'none': no_pnmi_data(),
-    }
-
-
-def analyze_dummy_dataset(name):
-    '''Run PNMI analysis for one named dummy dataset.'''
-    datasets = dummy_pnmi_datasets()
-    if name not in datasets:
-        raise ValueError(f'unknown dummy dataset: {name}')
-
-    phone_labels, cluster_labels = datasets[name]
-    result = evaluate_labels(phone_labels, cluster_labels,
-        return_diagnostics=True)
-    result['name'] = name
-    result['phone_labels'] = phone_labels
-    result['cluster_labels'] = cluster_labels
-    return result
-
-
-def analyze_all_dummy_datasets():
-    '''Run PNMI analysis across all named dummy datasets.'''
-    return {name: analyze_dummy_dataset(name) for name in dummy_pnmi_datasets()}
+def _as_label_arrays(phone_labels, cluster_labels):
+    phone_labels = np.asarray(phone_labels, dtype=object)
+    cluster_labels = np.asarray(cluster_labels, dtype=object)
+    if phone_labels.ndim != 1:
+        raise ValueError('phone_labels must be a 1D sequence')
+    if cluster_labels.ndim != 1:
+        raise ValueError('cluster_labels must be a 1D sequence')
+    if phone_labels.size == 0 or cluster_labels.size == 0:
+        raise ValueError('phone_labels and cluster_labels must not be empty')
+    if phone_labels.size != cluster_labels.size:
+        raise ValueError(
+            'phone_labels and cluster_labels must have the same length')
+    return phone_labels, cluster_labels
