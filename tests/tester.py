@@ -9,10 +9,10 @@ from pnmi import analyze_all_dummy_datasets
 from pnmi import evaluate_labels
 from pnmi import evaluate_streams
 from pnmi import joint_distribution
-from pnmi import labels_from_count_matrix
 from pnmi import marginals
 from pnmi import mutual_information
 from pnmi import phone_purity
+from pnmi import perfect_pnmi_data
 from pnmi import pnmi
 from pnmi import select_codebook_streams
 
@@ -165,12 +165,13 @@ class SpidrRegressionTests(unittest.TestCase):
 
 
 class DummyDataRegressionTests(unittest.TestCase):
-    def test_labels_from_count_matrix_builds_expected_lengths(self):
-        phone_labels, cluster_labels = labels_from_count_matrix(
-            [[2, 1], [0, 3]])
+    def test_dummy_dataset_returns_direct_label_sequences(self):
+        phone_labels, cluster_labels = perfect_pnmi_data()
 
-        self.assertEqual(phone_labels.tolist(), [0, 0, 0, 1, 1, 1])
-        self.assertEqual(cluster_labels.tolist(), [0, 0, 1, 1, 1, 1])
+        self.assertEqual(phone_labels.shape, (80,))
+        self.assertEqual(cluster_labels.shape, (80,))
+        self.assertEqual(phone_labels[:4].tolist(), ['aa', 'aa', 'aa', 'aa'])
+        self.assertEqual(cluster_labels[:4].tolist(), ['c0', 'c0', 'c0', 'c0'])
 
     def test_dummy_datasets_have_expected_ordering(self):
         results = analyze_all_dummy_datasets()

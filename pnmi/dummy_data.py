@@ -3,95 +3,90 @@ import numpy as np
 from .metrics import evaluate_labels
 
 
-def labels_from_count_matrix(count_matrix):
-    '''Build aligned frame labels from a phone-by-cluster count matrix.
-
-    count_matrix: rows are phone labels, columns are cluster labels
-    '''
-    count_matrix = np.asarray(count_matrix, dtype=int)
-    if count_matrix.ndim != 2:
-        raise ValueError('count_matrix must be a 2D array')
-    if np.any(count_matrix < 0):
-        raise ValueError('count_matrix must be non-negative')
-    if count_matrix.sum() == 0:
-        raise ValueError('count_matrix must contain at least one frame')
-
-    phone_labels = []
-    cluster_labels = []
-    for phone_index in range(count_matrix.shape[0]):
-        for cluster_index in range(count_matrix.shape[1]):
-            count = int(count_matrix[phone_index, cluster_index])
-            if count == 0: continue
-            phone_labels.extend([phone_index] * count)
-            cluster_labels.extend([cluster_index] * count)
-
-    return np.asarray(phone_labels, dtype=int), np.asarray(cluster_labels,
-        dtype=int)
+def _as_label_arrays(phone_labels, cluster_labels):
+    phone_labels = np.asarray(phone_labels, dtype=object)
+    cluster_labels = np.asarray(cluster_labels, dtype=object)
+    if phone_labels.ndim != 1:
+        raise ValueError('phone_labels must be a 1D sequence')
+    if cluster_labels.ndim != 1:
+        raise ValueError('cluster_labels must be a 1D sequence')
+    if phone_labels.size == 0 or cluster_labels.size == 0:
+        raise ValueError('phone_labels and cluster_labels must not be empty')
+    if phone_labels.size != cluster_labels.size:
+        raise ValueError(
+            'phone_labels and cluster_labels must have the same length')
+    return phone_labels, cluster_labels
 
 
 def perfect_pnmi_data():
     '''Return labels with a one-to-one phone-to-cluster mapping.'''
-    count_matrix = np.array(
-        [
-            [20, 0, 0, 0],
-            [0, 20, 0, 0],
-            [0, 0, 20, 0],
-            [0, 0, 0, 20],
-        ],
-        dtype=int)
-    return labels_from_count_matrix(count_matrix)
+    phone_labels = (
+        ['aa'] * 20 +
+        ['bb'] * 20 +
+        ['cc'] * 20 +
+        ['dd'] * 20)
+    cluster_labels = (
+        ['c0'] * 20 +
+        ['c1'] * 20 +
+        ['c2'] * 20 +
+        ['c3'] * 20)
+    return _as_label_arrays(phone_labels, cluster_labels)
 
 
 def high_pnmi_data():
     '''Return labels with strong but imperfect phone-cluster alignment.'''
-    count_matrix = np.array(
-        [
-            [18, 2, 0, 0],
-            [2, 18, 0, 0],
-            [0, 0, 18, 2],
-            [0, 0, 2, 18],
-        ],
-        dtype=int)
-    return labels_from_count_matrix(count_matrix)
+    phone_labels = (
+        ['aa'] * 20 +
+        ['bb'] * 20 +
+        ['cc'] * 20 +
+        ['dd'] * 20)
+    cluster_labels = (
+        ['c0'] * 18 + ['c1'] * 2 +
+        ['c0'] * 2 + ['c1'] * 18 +
+        ['c2'] * 18 + ['c3'] * 2 +
+        ['c2'] * 2 + ['c3'] * 18)
+    return _as_label_arrays(phone_labels, cluster_labels)
 
 
 def medium_pnmi_data():
     '''Return labels where clusters merge phone pairs deterministically.'''
-    count_matrix = np.array(
-        [
-            [20, 0],
-            [20, 0],
-            [0, 20],
-            [0, 20],
-        ],
-        dtype=int)
-    return labels_from_count_matrix(count_matrix)
+    phone_labels = (
+        ['aa'] * 20 +
+        ['bb'] * 20 +
+        ['cc'] * 20 +
+        ['dd'] * 20)
+    cluster_labels = (
+        ['c0'] * 20 +
+        ['c0'] * 20 +
+        ['c1'] * 20 +
+        ['c1'] * 20)
+    return _as_label_arrays(phone_labels, cluster_labels)
 
 
 def low_pnmi_data():
     '''Return labels with weak but non-zero phone-cluster correlation.'''
-    count_matrix = np.array(
-        [
-            [8, 5, 4, 3],
-            [3, 8, 5, 4],
-            [4, 3, 8, 5],
-            [5, 4, 3, 8],
-        ],
-        dtype=int)
-    return labels_from_count_matrix(count_matrix)
+    phone_labels = (
+        ['aa'] * 20 +
+        ['bb'] * 20 +
+        ['cc'] * 20 +
+        ['dd'] * 20)
+    cluster_labels = (
+        ['c0'] * 8 + ['c1'] * 5 + ['c2'] * 4 + ['c3'] * 3 +
+        ['c0'] * 3 + ['c1'] * 8 + ['c2'] * 5 + ['c3'] * 4 +
+        ['c0'] * 4 + ['c1'] * 3 + ['c2'] * 8 + ['c3'] * 5 +
+        ['c0'] * 5 + ['c1'] * 4 + ['c2'] * 3 + ['c3'] * 8)
+    return _as_label_arrays(phone_labels, cluster_labels)
 
 
 def no_pnmi_data():
     '''Return labels with identical cluster distribution for every phone.'''
-    count_matrix = np.array(
-        [
-            [5, 5, 5, 5],
-            [5, 5, 5, 5],
-            [5, 5, 5, 5],
-            [5, 5, 5, 5],
-        ],
-        dtype=int)
-    return labels_from_count_matrix(count_matrix)
+    phone_labels = (
+        ['aa'] * 20 +
+        ['bb'] * 20 +
+        ['cc'] * 20 +
+        ['dd'] * 20)
+    cluster_labels = ['c0', 'c1', 'c2', 'c3'] * 20
+    return _as_label_arrays(phone_labels, cluster_labels)
 
 
 def dummy_pnmi_datasets():
@@ -115,12 +110,11 @@ def analyze_dummy_dataset(name):
     result = evaluate_labels(phone_labels, cluster_labels,
         return_diagnostics=True)
     result['name'] = name
+    result['phone_labels'] = phone_labels
+    result['cluster_labels'] = cluster_labels
     return result
 
 
 def analyze_all_dummy_datasets():
     '''Run PNMI analysis across all named dummy datasets.'''
-    return {
-        name: analyze_dummy_dataset(name)
-        for name in dummy_pnmi_datasets()
-    }
+    return {name: analyze_dummy_dataset(name) for name in dummy_pnmi_datasets()}

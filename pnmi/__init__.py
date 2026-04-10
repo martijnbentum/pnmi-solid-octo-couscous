@@ -3,7 +3,6 @@ from .dummy_data import analyze_all_dummy_datasets
 from .dummy_data import analyze_dummy_dataset
 from .dummy_data import dummy_pnmi_datasets
 from .dummy_data import high_pnmi_data
-from .dummy_data import labels_from_count_matrix
 from .dummy_data import low_pnmi_data
 from .dummy_data import medium_pnmi_data
 from .dummy_data import no_pnmi_data
@@ -35,7 +34,6 @@ __all__ = [
     'filter_valid_frames',
     'high_pnmi_data',
     'joint_distribution',
-    'labels_from_count_matrix',
     'low_pnmi_data',
     'marginals',
     'medium_pnmi_data',
