@@ -37,9 +37,9 @@ def evaluate_streams(phone_labels, codebooks, mode='per_stream',
                          aggregate summary across streams with mean, min, max,
                          and valid-frame weighted mean.
     '''
+    stream_axis = _resolve_stream_axis(phone_labels, codebooks, stream_axis)
     streams = select_codebook_streams(codebooks, layers=layers,
-        start_layer=start_layer, end_layer=end_layer,
-        stream_axis=stream_axis)
+        start_layer=start_layer, end_layer=end_layer, stream_axis=stream_axis)
 
     if mode == 'per_stream':
         return {
@@ -201,6 +201,24 @@ def _normalise_streams(codebooks, stream_axis=0):
         return streams
 
     return {0: _as_object_array(codebooks)}
+
+
+def _resolve_stream_axis(phone_labels, codebooks, stream_axis):
+    if not isinstance(codebooks, np.ndarray) or codebooks.ndim != 2:
+        return stream_axis
+
+    if stream_axis not in (0, 1):
+        raise ValueError('stream_axis must be 0 or 1')
+
+    frame_count = np.asarray(phone_labels, dtype=object).reshape(-1).size
+    matches_axis0 = codebooks.shape[0] == frame_count
+    matches_axis1 = codebooks.shape[1] == frame_count
+
+    if matches_axis0 and not matches_axis1:
+        return 1
+    if matches_axis1 and not matches_axis0:
+        return 0
+    return stream_axis
 
 
 def _selected_keys(all_keys, layers=None, start_layer=None, end_layer=None):

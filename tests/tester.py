@@ -131,6 +131,26 @@ class SpidrRegressionTests(unittest.TestCase):
         self.assertLess(results[5]['pnmi'], 1.0)
         self.assertLess(results[6]['pnmi'], 1.0)
 
+    def test_per_stream_evaluation_infers_frame_major_numpy_axis(self):
+        phone_labels = np.array([0, 0, 1, 1, 2, 2, 3, 3])
+        codebooks = np.array([
+            [0, 0],
+            [0, 0],
+            [0, 1],
+            [0, 1],
+            [1, 0],
+            [1, 0],
+            [1, 1],
+            [1, 1],
+        ])
+
+        results = evaluate_streams(phone_labels, codebooks,
+            mode='per_stream')
+
+        self.assertEqual(set(results.keys()), {0, 1})
+        self.assertLess(results[0]['pnmi'], 1.0)
+        self.assertLess(results[1]['pnmi'], 1.0)
+
     def test_joint_token_captures_complementary_streams(self):
         phone_labels = [0, 0, 1, 1, 2, 2, 3, 3]
         codebooks = {
