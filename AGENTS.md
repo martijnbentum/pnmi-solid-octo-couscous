@@ -5,6 +5,17 @@
 This repository is a small Python library for computing PNMI and related
 frame-level clustering metrics from phone labels and cluster labels.
 
+## Environment
+
+Use uv for everything.
+
+Setup:
+    uv venv .venv --python 3.12
+    uv sync
+
+Run:
+    uv run python script.py
+
 ## Code Style
 ## Coding Style
 - Target a maximum line length of 80 characters for new or modified lines when
@@ -98,3 +109,5 @@ frame-level clustering metrics from phone labels and cluster labels.
 - Keep helper names descriptive and direct.
 - If you touch packaging metadata, keep `pyproject.toml` minimal and consistent
   with the existing setuptools setup.
+- Always remove any root-level `.egg-info` directory created during local
+  builds or installs before finishing the task.
